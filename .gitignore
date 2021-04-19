@@ -66,3 +66,12 @@ tests/pw_webauthn_lib/corpus
 tests/pw_webauthn_lib/crash-*
 tests/pw_webauthn_lib/fuzz-*
 tests/pw_webauthn_lib/coverage/*
+
+tests/pw_anyone_can_pay/corpus
+tests/pw_anyone_can_pay/crash-*
+tests/pw_anyone_can_pay/fuzz-*
+tests/pw_anyone_can_pay/coverage/*
+
+pw_acp_coverage
+pw_acp_fuzzer
+
