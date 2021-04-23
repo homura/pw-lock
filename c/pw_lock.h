@@ -30,7 +30,7 @@
  * @param lock_bytes_size the size of signature
  *
  */
-int get_signature_from_trancation(uint64_t *chain_id, unsigned char *message,
+int get_signature_from_transaction(uint64_t *chain_id, unsigned char *message,
                                   unsigned char *lock_bytes,
                                   uint64_t *lock_bytes_size) {
   unsigned char temp[TEMP_SIZE];
@@ -38,13 +38,9 @@ int get_signature_from_trancation(uint64_t *chain_id, unsigned char *message,
 
   /* Load witness of first input */
   uint64_t witness_len = MAX_WITNESS_SIZE;
-  int ret = ckb_load_witness(temp, &witness_len, 0, 0, CKB_SOURCE_GROUP_INPUT);
+  int ret = ckb_checked_load_witness(temp, &witness_len, 0, 0, CKB_SOURCE_GROUP_INPUT);
   if (ret != CKB_SUCCESS) {
     return ERROR_SYSCALL;
-  }
-
-  if (witness_len > MAX_WITNESS_SIZE) {
-    return ERROR_WITNESS_SIZE;
   }
 
   /* load signature */
@@ -64,6 +60,7 @@ int get_signature_from_trancation(uint64_t *chain_id, unsigned char *message,
     memcpy(lock_bytes, lock_bytes_seg.ptr, MIN_SIGNATURE_SIZE);
     *lock_bytes_size = MIN_SIGNATURE_SIZE;
   } else {
+    *chain_id = 0;
     memcpy(chain_id, lock_bytes_seg.ptr, 1);
     memcpy(lock_bytes, (lock_bytes_seg.ptr + 1), lock_bytes_seg.size - 1);
     *lock_bytes_size = lock_bytes_seg.size - 1;
@@ -127,12 +124,9 @@ int read_pw_args(unsigned char *lock_args, uint64_t *lock_args_size) {
   /* Load args */
   unsigned char script[SCRIPT_SIZE];
   len = SCRIPT_SIZE;
-  ret = ckb_load_script(script, &len, 0);
+  ret = ckb_checked_load_script(script, &len, 0);
   if (ret != CKB_SUCCESS) {
     return ERROR_SYSCALL;
-  }
-  if (len > SCRIPT_SIZE) {
-    return ERROR_SCRIPT_TOO_LONG;
   }
   mol_seg_t script_seg;
   script_seg.ptr = (uint8_t *)script;
@@ -181,7 +175,7 @@ int verify_pwlock_sighash_all(uint8_t *code_buf, uint64_t code_buf_size) {
     return ret;
   }
 
-  ret = get_signature_from_trancation(&chain_id, message, lock_bytes,
+  ret = get_signature_from_transaction(&chain_id, message, lock_bytes,
                                       &lock_bytes_size);
   if (ret != CKB_SUCCESS) {
     return ret;
