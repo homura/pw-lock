@@ -39,6 +39,7 @@ Defines commonly used high level functions and constants.
 #define SINCE_EPOCH_FRACTION_FLAG 0b00100000
 
 #define ONE_BATCH_SIZE 32768
+#define SIGNATURE_WITNESS_BUFFER_SIZE 32768
 
 /* calculate inputs length */
 int calculate_inputs_len() {
@@ -77,19 +78,22 @@ int calculate_inputs_len() {
   return hi;
 }
 
-int load_and_hash_witness(blake2b_state *ctx, size_t index, size_t source) {
+int load_and_hash_witness(blake2b_state *ctx, size_t start, size_t index,
+                          size_t source, bool hash_length) {
   uint8_t temp[ONE_BATCH_SIZE];
   uint64_t len = ONE_BATCH_SIZE;
-  int ret = ckb_load_witness(temp, &len, 0, index, source);
+  int ret = ckb_load_witness(temp, &len, start, index, source);
   if (ret != CKB_SUCCESS) {
     return ret;
   }
-  blake2b_update(ctx, (char *)&len, sizeof(uint64_t));
+  if (hash_length) {
+    blake2b_update(ctx, (char *)&len, sizeof(uint64_t));
+  }
   uint64_t offset = (len > ONE_BATCH_SIZE) ? ONE_BATCH_SIZE : len;
   blake2b_update(ctx, temp, offset);
   while (offset < len) {
     uint64_t current_len = ONE_BATCH_SIZE;
-    ret = ckb_load_witness(temp, &current_len, offset, index, source);
+    ret = ckb_load_witness(temp, &current_len, start + offset, index, source);
     if (ret != CKB_SUCCESS) {
       return ret;
     }
@@ -101,22 +105,19 @@ int load_and_hash_witness(blake2b_state *ctx, size_t index, size_t source) {
   return CKB_SUCCESS;
 }
 
-/* Extract lock from WitnessArgs */
+/* Extract lock from WitnessArgs, manually */
 int extract_witness_lock(uint8_t *witness, uint64_t len,
                          mol_seg_t *lock_bytes_seg) {
-  mol_seg_t witness_seg;
-  witness_seg.ptr = witness;
-  witness_seg.size = len;
-
-  if (MolReader_WitnessArgs_verify(&witness_seg, false) != MOL_OK) {
+  if (len < 20) {
     return ERROR_ENCODING;
   }
-  mol_seg_t lock_seg = MolReader_WitnessArgs_get_lock(&witness_seg);
-
-  if (MolReader_BytesOpt_is_none(&lock_seg)) {
+  uint32_t lock_length = *((uint32_t *)(&witness[16]));
+  if (len < 20 + lock_length) {
     return ERROR_ENCODING;
+  } else {
+    lock_bytes_seg->ptr = &witness[20];
+    lock_bytes_seg->size = lock_length;
   }
-  *lock_bytes_seg = MolReader_Bytes_raw_bytes(&lock_seg);
   return CKB_SUCCESS;
 }
 

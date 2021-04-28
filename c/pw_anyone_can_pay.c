@@ -249,31 +249,33 @@ int check_payment_unlock(uint64_t min_ckb_amount, uint128_t min_udt_amount) {
 }
 
 int has_signature(int *has_sig) {
-  int ret;
-  unsigned char temp[MAX_WITNESS_SIZE];
+  int ret = 0;
 
-  /* Load witness of first input */
-  uint64_t witness_len = MAX_WITNESS_SIZE;
-  ret = ckb_checked_load_witness(temp, &witness_len, 0, 0, CKB_SOURCE_GROUP_INPUT);
-
-  if ((ret == CKB_INDEX_OUT_OF_BOUND) ||
-      (ret == CKB_SUCCESS && witness_len == 0)) {
+  // extra lock from witness without molecule tools, to support very large
+  // input_type and output_type
+  uint8_t witness[SIGNATURE_WITNESS_BUFFER_SIZE];
+  uint64_t first_witness_len = SIGNATURE_WITNESS_BUFFER_SIZE;
+  ret = ckb_load_witness(witness, &first_witness_len, 0, 0,
+                         CKB_SOURCE_GROUP_INPUT);
+  if (ret != CKB_SUCCESS) {
     *has_sig = 0;
     return CKB_SUCCESS;
   }
 
-  if (ret != CKB_SUCCESS) {
-    return ERROR_SYSCALL;
+  size_t readed_len = first_witness_len;
+  if (readed_len > SIGNATURE_WITNESS_BUFFER_SIZE) {
+    readed_len = SIGNATURE_WITNESS_BUFFER_SIZE;
   }
-
-  /* load signature */
-  mol_seg_t lock_bytes_seg;
-  ret = extract_witness_lock(temp, witness_len, &lock_bytes_seg);
-  if (ret != 0) {
-    return ERROR_ENCODING;
+  if (readed_len < 20) {
+    *has_sig = 0;
+    return CKB_SUCCESS;
   }
-
-  *has_sig = lock_bytes_seg.size > 0;
+  uint32_t lock_length = *((uint32_t *)(&witness[16]));
+  if (readed_len < 20 + lock_length) {
+    *has_sig = 0;
+  } else {
+    *has_sig = lock_length > 0;
+  }
   return CKB_SUCCESS;
 }
 

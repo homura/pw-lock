@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::{
     eth160, get_current_chain_id, is_compressed, pubkey_compressed, pubkey_uncompressed,
     ripemd_sha, sign_tx_by_input_group_keccak256, sign_tx_keccak256, sign_tx_keccak256_with_flag,
@@ -22,7 +24,7 @@ use rand::{thread_rng, Rng, SeedableRng};
 use sha3::{Digest, Keccak256};
 
 const ERROR_ENCODING: i8 = -2;
-const ERROR_LENGTH_NOT_ENOUGH: i8 = -3;
+// const ERROR_LENGTH_NOT_ENOUGH: i8 = -3;
 const ERROR_PUBKEY_BLAKE160_HASH: i8 = -31;
 
 fn gen_tx(dummy: &mut DummyDataLoader, lock_args: Bytes) -> TransactionView {
@@ -219,7 +221,7 @@ fn test_keccak_all_unlock() {
     let resolved_tx = build_resolved_tx(&data_loader, &tx);
     let verify_result =
         TransactionScriptsVerifier::new(&resolved_tx, &data_loader).verify(MAX_CYCLES);
-    let cycle = verify_result.expect("pass verification");
+    let _cycle = verify_result.expect("pass verification");
     // assert_eq!(cycle > 10000000, true);
 }
 
@@ -529,7 +531,7 @@ fn test_super_long_witness() {
         TransactionScriptsVerifier::new(&resolved_tx, &data_loader).verify(MAX_CYCLES);
     assert_error_eq!(
         verify_result.unwrap_err(),
-        ScriptError::ValidationFailure(ERROR_LENGTH_NOT_ENOUGH),
+        ScriptError::ValidationFailure(ERROR_PUBKEY_BLAKE160_HASH),
     );
 }
 
@@ -626,7 +628,7 @@ fn test_sighash_all_witness_append_junk_data() {
         TransactionScriptsVerifier::new(&resolved_tx, &data_loader).verify(MAX_CYCLES);
     assert_error_eq!(
         verify_result.unwrap_err(),
-        ScriptError::ValidationFailure(ERROR_ENCODING),
+        ScriptError::ValidationFailure(ERROR_PUBKEY_BLAKE160_HASH),
     );
 }
 
