@@ -97,7 +97,17 @@ int verify_challenge_in_client_data(const u8* digest_message,
   if (challenge_b64_len <= 0) {
     return ERROR_WRONG_CHALLENGE;
   }
-
+  if (challenge_b64_len > sizeof(challenge_b64)) {
+    return ERROR_WRONG_CHALLENGE;
+  }
+  if (client_data_len >= challenge_b64_start) {
+    int remaining = client_data_len - challenge_b64_start;
+    if (remaining < challenge_b64_len) {
+      return ERROR_WRONG_CHALLENGE;
+    }
+  } else {
+    return ERROR_WRONG_CHALLENGE;
+  }
   memcpy(challenge_b64, client_data + challenge_b64_start, challenge_b64_len);
 
   while (challenge_b64_len < 44) {
