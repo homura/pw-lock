@@ -24,6 +24,7 @@ use openssl::ec::EcKeyRef;
 use openssl::ecdsa::EcdsaSig;
 use openssl::pkey::Private;
 use sha2::{Digest as SHA2Digest, Sha256};
+use ckb_types::packed::Byte32;
 
 //   const ERROR_SIG_BUFFER_SIZE: i8 = 61;
 //   const ERROR_MESSAGE_SIZE: i8 = 62;
@@ -540,6 +541,17 @@ fn test_sighash_all_2_in_2_out_cycles() {
     assert_eq!(CONSUME_CYCLES > cycles, true);
 }
 
+
+pub fn debug_printer(script: &Byte32, msg: &str) {
+    let slice = script.as_slice();
+    let str = format!(
+        "Script({:x}{:x}{:x}{:x}{:x})",
+        slice[0], slice[1], slice[2], slice[3], slice[4]
+    );
+    println!("{:?}: {}", str, msg);
+}
+
+
 #[test]
 fn test_sighash_all_witness_append_junk_data() {
     let mut rng = thread_rng();
@@ -565,8 +577,9 @@ fn test_sighash_all_witness_append_junk_data() {
         .build();
 
     let resolved_tx = build_resolved_tx(&data_loader, &tx);
-    let verify_result =
-        TransactionScriptsVerifier::new(&resolved_tx, &data_loader).verify(MAX_CYCLES);
+    let mut verifier = TransactionScriptsVerifier::new(&resolved_tx, &data_loader);
+    verifier.set_debug_printer(debug_printer);
+    let verify_result = verifier.verify(MAX_CYCLES);
     assert_error_eq!(
         verify_result.unwrap_err(),
         ScriptError::ValidationFailure(63),

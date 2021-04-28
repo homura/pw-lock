@@ -96,7 +96,7 @@ int get_signature_from_transaction(uint64_t *chain_id, unsigned char *message,
     ret = load_and_hash_witness(&blake2b_ctx, read_len, 0,
                                 CKB_SOURCE_GROUP_INPUT, false);
     if (ret != CKB_SUCCESS) {
-      return ERROR_ENCODING;
+      return ERROR_SYSCALL;
     }
   }
   // Digest same group witnesses

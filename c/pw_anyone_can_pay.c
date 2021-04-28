@@ -15,6 +15,10 @@
  * otherwise, the script perform secp256k1_keccak256_sighash_all verification.
  */
 
+// uncomment to enable printf in CKB-VM
+//#define CKB_C_STDLIB_PRINTF
+//#include <stdio.h>
+
 #include "ckb_syscalls.h"
 #include "defs.h"
 #include "overflow_add.h"

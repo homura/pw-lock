@@ -2,7 +2,7 @@ TARGET := riscv64-unknown-linux-gnu
 CC := $(TARGET)-gcc
 LD := $(TARGET)-gcc
 OBJCOPY := $(TARGET)-objcopy
-CFLAGS := -fPIC -O3 -nostdinc -nostdlib -nostartfiles -fvisibility=hidden -I deps/ckb-c-stdlib -I deps/ckb-c-stdlib/libc -I deps -I deps/ckb-c-stdlib/molecule -I c -I build -I deps/secp256k1/src -I deps/secp256k1 -Wall -Werror -Wno-nonnull -Wno-nonnull-compare -Wno-unused-function -g -DHAS_ETHEREUM -DHAS_EOS -DHAS_TRON -DHAS_BITCOIN -DHAS_DOGECOIN -DHAS_EXTENDED_VALIDATOR
+CFLAGS := -fPIC -O3 -fno-builtin-printf -nostdinc -nostdlib -nostartfiles -fvisibility=hidden -I deps/ckb-c-stdlib -I deps/ckb-c-stdlib/libc -I deps -I deps/ckb-c-stdlib/molecule -I c -I build -I deps/secp256k1/src -I deps/secp256k1 -Wall -Werror -Wno-nonnull -Wno-nonnull-compare -Wno-unused-function -g -DHAS_ETHEREUM -DHAS_EOS -DHAS_TRON -DHAS_BITCOIN -DHAS_DOGECOIN -DHAS_EXTENDED_VALIDATOR
 LDFLAGS := -Wl,-static -fdata-sections -ffunction-sections -Wl,--gc-sections 
 SECP256K1_SRC := deps/secp256k1/src/ecmult_static_pre_context.h
 SECP256R1_DEP := deps/libecc/build/libsign.a
