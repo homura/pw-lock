@@ -31,21 +31,25 @@
  *
  */
 int get_signature_from_transaction(uint64_t *chain_id, unsigned char *message,
-                                  unsigned char *lock_bytes,
-                                  uint64_t *lock_bytes_size) {
-  unsigned char temp[TEMP_SIZE];
+                                   unsigned char *lock_bytes,
+                                   uint64_t *lock_bytes_size) {
+  unsigned char temp[SIGNATURE_WITNESS_BUFFER_SIZE];
   uint64_t len = 0;
 
   /* Load witness of first input */
-  uint64_t witness_len = MAX_WITNESS_SIZE;
-  int ret = ckb_checked_load_witness(temp, &witness_len, 0, 0, CKB_SOURCE_GROUP_INPUT);
+  uint64_t read_len = SIGNATURE_WITNESS_BUFFER_SIZE;
+  int ret = ckb_load_witness(temp, &read_len, 0, 0, CKB_SOURCE_GROUP_INPUT);
   if (ret != CKB_SUCCESS) {
     return ERROR_SYSCALL;
+  }
+  uint64_t witness_len = read_len;
+  if (read_len > SIGNATURE_WITNESS_BUFFER_SIZE) {
+    read_len = SIGNATURE_WITNESS_BUFFER_SIZE;
   }
 
   /* load signature */
   mol_seg_t lock_bytes_seg;
-  ret = extract_witness_lock(temp, witness_len, &lock_bytes_seg);
+  ret = extract_witness_lock(temp, read_len, &lock_bytes_seg);
   if (ret != 0) {
     return ERROR_ENCODING;
   }
@@ -85,12 +89,21 @@ int get_signature_from_transaction(uint64_t *chain_id, unsigned char *message,
   /* Clear lock field to zero, then digest the first witness */
   memset((void *)lock_bytes_seg.ptr, 0, lock_bytes_seg.size);
   blake2b_update(&blake2b_ctx, (unsigned char *)&witness_len, sizeof(uint64_t));
-  blake2b_update(&blake2b_ctx, temp, witness_len);
+  blake2b_update(&blake2b_ctx, temp, read_len);
 
+  // remaining of first witness
+  if (read_len < witness_len) {
+    ret = load_and_hash_witness(&blake2b_ctx, read_len, 0,
+                                CKB_SOURCE_GROUP_INPUT, false);
+    if (ret != CKB_SUCCESS) {
+      return ERROR_SYSCALL;
+    }
+  }
   // Digest same group witnesses
   size_t i = 1;
   while (1) {
-    ret = load_and_hash_witness(&blake2b_ctx, i, CKB_SOURCE_GROUP_INPUT);
+    ret =
+        load_and_hash_witness(&blake2b_ctx, 0, i, CKB_SOURCE_GROUP_INPUT, true);
     if (ret == CKB_INDEX_OUT_OF_BOUND) {
       break;
     }
@@ -103,7 +116,7 @@ int get_signature_from_transaction(uint64_t *chain_id, unsigned char *message,
   // Digest witnesses that not covered by inputs
   i = ckb_calculate_inputs_len();
   while (1) {
-    ret = load_and_hash_witness(&blake2b_ctx, i, CKB_SOURCE_INPUT);
+    ret = load_and_hash_witness(&blake2b_ctx, 0, i, CKB_SOURCE_INPUT, true);
     if (ret == CKB_INDEX_OUT_OF_BOUND) {
       break;
     }
@@ -176,7 +189,7 @@ int verify_pwlock_sighash_all(uint8_t *code_buf, uint64_t code_buf_size) {
   }
 
   ret = get_signature_from_transaction(&chain_id, message, lock_bytes,
-                                      &lock_bytes_size);
+                                       &lock_bytes_size);
   if (ret != CKB_SUCCESS) {
     return ret;
   }

@@ -160,7 +160,7 @@ pub fn eth160(pubkey1: Pubkey) -> Bytes {
 
     let mut hasher = Keccak256::default();
     hasher.input(&message);
-    let mut ret = hasher.result();
+    let ret = hasher.result();
     println!("{}", faster_hex::hex_string(ret.clone().as_slice()).unwrap());
 
     Bytes::from(ret.as_slice()).slice(12, 32)

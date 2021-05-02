@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::{eth160, DummyDataLoader, KECCAK256_ALL_ACPL_BIN, MAX_CYCLES, SECP256K1_DATA_BIN};
 use ckb_crypto::secp::Generator;
 use ckb_error::assert_error_eq;

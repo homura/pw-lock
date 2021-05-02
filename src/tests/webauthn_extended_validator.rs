@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::{
     r1_pub_key, random_r1_key, sign_tx_by_input_group_r1, sign_tx_r1, DummyDataLoader,
     CHAIN_ID_WEBAUTHN, MAX_CYCLES, PWLOCK_WEBAUTHN_LIB_BIN, R1_SIGNATURE_SIZE,
@@ -22,6 +24,7 @@ use openssl::ec::EcKeyRef;
 use openssl::ecdsa::EcdsaSig;
 use openssl::pkey::Private;
 use sha2::{Digest as SHA2Digest, Sha256};
+use ckb_types::packed::Byte32;
 
 //   const ERROR_SIG_BUFFER_SIZE: i8 = 61;
 //   const ERROR_MESSAGE_SIZE: i8 = 62;
@@ -30,8 +33,9 @@ const ERROR_WRONG_PUBKEY: i8 = 64;
 //   const ERROR_WINTESS_LOCK_SIZE: i8 = 65;
 //   const ERROR_R1_SIGNATURE_VERFICATION: i8 = 66;
 
-const ERROR_ENCODING: i8 = -2;
-const ERROR_LENGTH_NOT_ENOUGH: i8 = -3;
+const ERROR_ARGUMENTS_LEN: i8 = -1;
+// const ERROR_ENCODING: i8 = -2;
+// const ERROR_LENGTH_NOT_ENOUGH: i8 = -3;
 
 fn gen_tx(dummy: &mut DummyDataLoader, lock_args: Bytes) -> TransactionView {
     let mut rng = thread_rng();
@@ -499,7 +503,7 @@ fn test_super_long_witness() {
         TransactionScriptsVerifier::new(&resolved_tx, &data_loader).verify(MAX_CYCLES);
     assert_error_eq!(
         verify_result.unwrap_err(),
-        ScriptError::ValidationFailure(ERROR_LENGTH_NOT_ENOUGH),
+        ScriptError::ValidationFailure(ERROR_ARGUMENTS_LEN),
     );
 }
 
@@ -537,6 +541,17 @@ fn test_sighash_all_2_in_2_out_cycles() {
     assert_eq!(CONSUME_CYCLES > cycles, true);
 }
 
+
+pub fn debug_printer(script: &Byte32, msg: &str) {
+    let slice = script.as_slice();
+    let str = format!(
+        "Script({:x}{:x}{:x}{:x}{:x})",
+        slice[0], slice[1], slice[2], slice[3], slice[4]
+    );
+    println!("{:?}: {}", str, msg);
+}
+
+
 #[test]
 fn test_sighash_all_witness_append_junk_data() {
     let mut rng = thread_rng();
@@ -562,11 +577,12 @@ fn test_sighash_all_witness_append_junk_data() {
         .build();
 
     let resolved_tx = build_resolved_tx(&data_loader, &tx);
-    let verify_result =
-        TransactionScriptsVerifier::new(&resolved_tx, &data_loader).verify(MAX_CYCLES);
+    let mut verifier = TransactionScriptsVerifier::new(&resolved_tx, &data_loader);
+    verifier.set_debug_printer(debug_printer);
+    let verify_result = verifier.verify(MAX_CYCLES);
     assert_error_eq!(
         verify_result.unwrap_err(),
-        ScriptError::ValidationFailure(ERROR_ENCODING),
+        ScriptError::ValidationFailure(63),
     );
 }
 
