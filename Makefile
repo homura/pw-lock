@@ -3,7 +3,7 @@ CC := $(TARGET)-gcc
 LD := $(TARGET)-gcc
 OBJCOPY := $(TARGET)-objcopy
 CFLAGS := -fPIC -O3 -fno-builtin-printf -nostdinc -nostdlib -nostartfiles -fvisibility=hidden -I deps/ckb-c-stdlib -I deps/ckb-c-stdlib/libc -I deps -I deps/ckb-c-stdlib/molecule -I c -I build -I deps/secp256k1/src -I deps/secp256k1 -Wall -Werror -Wno-nonnull -Wno-nonnull-compare -Wno-unused-function -g -DHAS_ETHEREUM -DHAS_EOS -DHAS_TRON -DHAS_BITCOIN -DHAS_DOGECOIN -DHAS_EXTENDED_VALIDATOR
-LDFLAGS := -Wl,-static -fdata-sections -ffunction-sections -Wl,--gc-sections 
+LDFLAGS := -Wl,-static -fdata-sections -ffunction-sections -Wl,--gc-sections
 SECP256K1_SRC := deps/secp256k1/src/ecmult_static_pre_context.h
 SECP256R1_DEP := deps/libecc/build/libsign.a
 
@@ -12,9 +12,9 @@ CFLAGS_MBEDTLS := -fPIC -Os -fno-builtin-printf -nostdinc -nostdlib -nostartfile
 LDFLAGS_MBEDTLS := -Wl,-static -Wl,--gc-sections
 PASSED_R1_CFLAGS := -Os -fPIC -nostdinc -nostdlib -DCKB_DECLARATION_ONLY -DWORDSIZE=64 -D__unix__ -DWITH_STDLIB  -fdata-sections -ffunction-sections -I ../ckb-c-stdlib/libc
 
-CFLAGS_R1 := -fPIC -Os -fno-builtin-printf -nostdinc -nostdlib -nostartfiles -fvisibility=hidden -fdata-sections -ffunction-sections -I deps/libecc -I deps/libecc/src -I deps/libecc/src/external_deps -I deps/ckb-c-stdlib -I deps/ckb-c-stdlib/molecule -I deps/ckb-c-stdlib/libc -Wall -Werror -Wno-nonnull -Wno-nonnull-compare -Wno-unused-function -g -DWORDSIZE=64 -D__unix__ -DWITH_STDLIB 
+CFLAGS_R1 := -fPIC -Os -fno-builtin-printf -nostdinc -nostdlib -nostartfiles -fvisibility=hidden -fdata-sections -ffunction-sections -I deps/libecc -I deps/libecc/src -I deps/libecc/src/external_deps -I deps/ckb-c-stdlib -I deps/ckb-c-stdlib/molecule -I deps/ckb-c-stdlib/libc -Wall -Werror -Wno-nonnull -Wno-nonnull-compare -Wno-unused-function -g -DWORDSIZE=64 -D__unix__ -DWITH_STDLIB
 
-# CFLAGS_R1 := -fPIC -O3 -nostdinc -nostdlib -fvisibility=hidden -I deps/libecc -I deps/libecc/src -I deps/libecc/src/external_deps -I deps/ckb-c-stdlib  -I deps -I deps/ckb-c-stdlib/libc -I deps/ckb-c-stdlib/molecule -I c -I build -I deps/secp256k1/src -I deps/secp256k1 -Wall -Werror -Wno-nonnull -Wno-nonnull-compare -Wno-unused-function -g -DWORDSIZE=64 -D__unix__ -DWITH_STDLIB 
+# CFLAGS_R1 := -fPIC -O3 -nostdinc -nostdlib -fvisibility=hidden -I deps/libecc -I deps/libecc/src -I deps/libecc/src/external_deps -I deps/ckb-c-stdlib  -I deps -I deps/ckb-c-stdlib/libc -I deps/ckb-c-stdlib/molecule -I c -I build -I deps/secp256k1/src -I deps/secp256k1 -Wall -Werror -Wno-nonnull -Wno-nonnull-compare -Wno-unused-function -g -DWORDSIZE=64 -D__unix__ -DWITH_STDLIB
 LDFLAGS_R1 := -Wl,-static -Wl,--gc-sections
 
 
@@ -30,7 +30,7 @@ PROTOCOL_URL := https://raw.githubusercontent.com/nervosnetwork/ckb/${PROTOCOL_V
 BUILDER_DOCKER := nervos/ckb-riscv-gnu-toolchain@sha256:aae8a3f79705f67d505d1f1d5ddc694a4fd537ed1c7e9622420a470d59ba2ec3
 
 #all: specs/cells/pw_anyone_can_pay specs/cells/secp256r1_sha256_sighash
-all: specs/cells/pw_anyone_can_pay specs/cells/pwlock_webauthn_lib
+all: specs/cells/pw_anyone_can_pay specs/cells/pw specs/cells/pwlock_webauthn_lib
 
 all-via-docker: ${PROTOCOL_HEADER}
 	docker run --rm -v `pwd`:/code ${BUILDER_DOCKER} bash -c "cd /code && make"
@@ -38,14 +38,19 @@ all-via-docker: ${PROTOCOL_HEADER}
 lib-via-docker: ${PROTOCOL_HEADER}
 	docker run --rm -v `pwd`:/code ${BUILDER_DOCKER} bash -c "cd /code && make specs/cells/pwlock_webauthn_lib"
 
-specs/cells/pw_anyone_can_pay: c/pw_anyone_can_pay.c ${PROTOCOL_HEADER} c/common.h c/utils.h build/secp256k1_data_info.h $(SECP256K1_SRC) 
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< 
+specs/cells/pw_anyone_can_pay: c/pw_anyone_can_pay.c ${PROTOCOL_HEADER} c/common.h c/utils.h build/secp256k1_data_info.h $(SECP256K1_SRC)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
 	$(OBJCOPY) --only-keep-debug $@ $(subst specs/cells,build,$@.debug)
 	$(OBJCOPY) --strip-debug --strip-all $@
 
 specs/cells/pwlock_webauthn_lib: c/webauthn/pw_webauthn_lib.c $(SECP256R1_DEP)
-	$(CC) $(CFLAGS_R1) $(LDFLAGS_R1) -D__SHARED_LIBRARY__ -fPIC -fPIE -pie -Wl,--dynamic-list c/webauthn/pw_webauthn.syms $< $(SECP256R1_DEP) deps/libecc/src/external_deps/rand.c deps/libecc/src/external_deps/print.c  -o $@ 
+	$(CC) $(CFLAGS_R1) $(LDFLAGS_R1) -D__SHARED_LIBRARY__ -fPIC -fPIE -pie -Wl,--dynamic-list c/webauthn/pw_webauthn.syms $< $(SECP256R1_DEP) deps/libecc/src/external_deps/rand.c deps/libecc/src/external_deps/print.c  -o $@
 	$(OBJCOPY) --only-keep-debug $@ $@.debug
+	$(OBJCOPY) --strip-debug --strip-all $@
+
+specs/cells/pw: c/pw.c ${PROTOCOL_HEADER} c/common.h c/utils.h build/secp256k1_data_info.h $(SECP256K1_SRC)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $<
+	$(OBJCOPY) --only-keep-debug $@ $(subst specs/cells,build,$@.debug)
 	$(OBJCOPY) --strip-debug --strip-all $@
 
 build/secp256k1_data_info.h: build/dump_secp256k1_data
